@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    # DB 계정은 루트 .env의 MYSQL_* 와 동일하게 맞춥니다 (복사 후 자리표시자를 실제 값으로 변경).
+    url: jdbc:mysql://localhost:3306/jwt_sample
+    username: your_mysql_user
+    password: your_mysql_password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  jwt:
+    # 복사 후 32자 이상 임의 문자열로 변경 (Git 커밋 금지)
+    secret: your-jwt-secret-at-least-32-characters
+    access-expiration: 900000
+    refresh-expiration: 604800000
+  refresh-token:
+    # 복사 후 임의 문자열로 변경 (Git 커밋 금지)
+    pepper: your-refresh-token-pepper
+  cookie:
+    name: refresh_token
+    # 운영과 동일하게 true 권장 — localhost/127.0.0.1은 브라우저가 HTTP에서도 Secure 쿠키 허용
+    # LAN IP(예: http://192.168.x.x)로 접속할 때만 false로 낮추기
+    secure: true
+    same-site: Strict
+    path: /api/auth
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173

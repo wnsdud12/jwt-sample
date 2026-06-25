@@ -288,10 +288,7 @@ web_modules/
 
 # dotenv environment variable files
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env*.local
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -450,5 +447,13 @@ gradle-app.setting
 ### Gradle Patch ###
 # Java heap dump
 *.hprof
+
+# 프로젝트 전용
+
+# Spring Boot local profile (시크릿 포함 — Git 커밋 금지)
+backend/springboot/src/main/resources/application-local.yml
+
+# Docker Compose secrets (Git 커밋 금지)
+.env
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos,java,maven,gradle,react,nextjs,linux,intellij+all,visualstudiocode,yarn,node
