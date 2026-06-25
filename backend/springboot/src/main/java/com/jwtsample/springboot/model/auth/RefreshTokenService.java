@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -37,6 +38,20 @@ public class RefreshTokenService {
 	public record RefreshTokenPair(String refreshTokenId, String rawToken, String cookieValue, Long userId) {
 	}
 
+	// Rotation 결과 — grace 중복 요청이면 cookieValue 없음 (Redis에 원문 저장하지 않음)
+	public record RotateResult(Long userId, Optional<String> cookieValue) {
+
+		public static RotateResult rotated(RefreshTokenPair pair) {
+			return new RotateResult(pair.userId(), Optional.of(pair.cookieValue()));
+		}
+
+		public static RotateResult graceReplay(Long userId) {
+			return new RotateResult(userId, Optional.empty());
+		}
+	}
+
+	private static final String GRACE_MARKER = "1";
+
 	// 로그인 시 새 Refresh Token 생성
 	public RefreshTokenPair createRefreshToken(Long userId) {
 		String refreshTokenId = UUID.randomUUID().toString();
@@ -51,7 +66,7 @@ public class RefreshTokenService {
 	}
 
 	// Refresh Token 검증 후 Rotation (새 rawToken 발급 + Redis 해시 교체)
-	public RefreshTokenPair rotateRefreshToken(String cookieValue) {
+	public RotateResult rotateRefreshToken(String cookieValue) {
 		String[] parts = parseCookieValue(cookieValue);
 		String refreshTokenId = parts[0];
 		String rawToken = parts[1];
@@ -71,11 +86,11 @@ public class RefreshTokenService {
 		if (!tokenHasher.matches(rawToken, storedHash)) {
 			// 현재 해시와 불일치 → 이미 Rotation된 이전 Refresh Token일 수 있음
 			String graceKey = REFRESH_TOKEN_GRACE_PREFIX + refreshTokenId + ":" + presentedHash;
-			String graceCookieValue = redisTemplate.opsForValue().get(graceKey);
 
-			if (graceCookieValue != null) {
-				// grace period 내 중복 요청: 새 토큰을 다시 발급하지 않고 방금 교체된 Cookie 값을 그대로 반환
-				return toRefreshTokenPair(graceCookieValue, userId);
+			if (Boolean.TRUE.equals(redisTemplate.hasKey(graceKey))) {
+				// grace period 내 중복 요청: access token만 재발급, Set-Cookie는 생략
+				// (첫 요청이 이미 Cookie를 갱신했거나, 프론트 single-flight가 응답을 공유함)
+				return RotateResult.graceReplay(userId);
 			}
 
 			// Grace period 이후 이전 Refresh Token 재사용 → 토큰 탈취 가능성, 사용자 전체 Refresh Token 무효화
@@ -88,10 +103,10 @@ public class RefreshTokenService {
 		String newCookieValue = refreshTokenId + "." + newRawToken;
 
 		saveRefreshToken(refreshTokenId, userId, newHash);
-		// Rotation 직전 토큰 해시 → 새 Cookie 값 매핑을 grace period 동안 Redis에 보관
-		saveGraceRefreshToken(refreshTokenId, presentedHash, newCookieValue);
+		// Rotation 직전 토큰 해시를 grace 키로만 보관 (값에는 원문/해시 저장 안 함)
+		saveGraceRefreshToken(refreshTokenId, presentedHash);
 
-		return new RefreshTokenPair(refreshTokenId, newRawToken, newCookieValue, userId);
+		return RotateResult.rotated(new RefreshTokenPair(refreshTokenId, newRawToken, newCookieValue, userId));
 	}
 
 	public void revokeRefreshToken(String cookieValue) {
@@ -121,15 +136,10 @@ public class RefreshTokenService {
 		redisTemplate.delete(userIndexKey);
 	}
 
-	private void saveGraceRefreshToken(String refreshTokenId, String oldTokenHash, String newCookieValue) {
-		// key: refreshToken:grace:{refreshTokenId}:{이전토큰해시} → value: 새 Cookie 값, TTL 30초
+	private void saveGraceRefreshToken(String refreshTokenId, String oldTokenHash) {
+		// key: refreshToken:grace:{refreshTokenId}:{이전토큰해시} → 마커만 저장, TTL 30초
 		String graceKey = REFRESH_TOKEN_GRACE_PREFIX + refreshTokenId + ":" + oldTokenHash;
-		redisTemplate.opsForValue().set(graceKey, newCookieValue, GRACE_TTL);
-	}
-
-	private RefreshTokenPair toRefreshTokenPair(String cookieValue, Long userId) {
-		String[] parts = parseCookieValue(cookieValue);
-		return new RefreshTokenPair(parts[0], parts[1], cookieValue, userId);
+		redisTemplate.opsForValue().set(graceKey, GRACE_MARKER, GRACE_TTL);
 	}
 
 	private void saveRefreshToken(String refreshTokenId, Long userId, String tokenHash) {

@@ -14,6 +14,7 @@ import com.jwtsample.springboot.view.user.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
+import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +30,7 @@ public class AuthService {
 	private final JwtTokenProvider jwtTokenProvider;
 	private final PasswordEncoder passwordEncoder;
 
-	public record TokenWithCookie(AccessTokenResponse accessToken, ResponseCookie refreshCookie) {
+	public record TokenWithCookie(AccessTokenResponse accessToken, @Nullable ResponseCookie refreshCookie) {
 	}
 
 	@Transactional
@@ -56,10 +57,12 @@ public class AuthService {
 		String cookieValue = refreshTokenCookieManager.getRefreshTokenFromCookie(request)
 			.orElseThrow(() -> new AuthException(ErrorCode.INVALID_TOKEN));
 
-		RefreshTokenService.RefreshTokenPair rotatedPair = refreshTokenService.rotateRefreshToken(cookieValue);
-		ResponseCookie refreshCookie = refreshTokenCookieManager.createRefreshTokenCookie(rotatedPair.cookieValue());
+		RefreshTokenService.RotateResult rotateResult = refreshTokenService.rotateRefreshToken(cookieValue);
+		ResponseCookie refreshCookie = rotateResult.cookieValue()
+			.map(refreshTokenCookieManager::createRefreshTokenCookie)
+			.orElse(null);
 
-		User user = userService.getUserEntityById(rotatedPair.userId());
+		User user = userService.getUserEntityById(rotateResult.userId());
 		return new TokenWithCookie(buildAccessTokenResponse(new UserPrincipal(user)), refreshCookie);
 	}
 

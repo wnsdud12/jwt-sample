@@ -40,9 +40,11 @@ public class AuthController {
 	@PostMapping("/refresh")
 	public ResponseEntity<AccessTokenResponse> refresh(HttpServletRequest request) {
 		AuthService.TokenWithCookie result = authService.refresh(request);
-		return ResponseEntity.ok()
-			.header(HttpHeaders.SET_COOKIE, result.refreshCookie().toString())
-			.body(result.accessToken());
+		ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();
+		if (result.refreshCookie() != null) {
+			responseBuilder.header(HttpHeaders.SET_COOKIE, result.refreshCookie().toString());
+		}
+		return responseBuilder.body(result.accessToken());
 	}
 
 	@PostMapping("/logout")
