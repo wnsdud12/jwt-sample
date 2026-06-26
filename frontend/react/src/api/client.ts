@@ -37,6 +37,10 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 //   - initializeAuth(앱 시작 시 refresh) + 401 인터셉터(만료된 토큰으로 API 호출)가 동시에 실행될 수 있다.
 // Rotation 방식 서버에서 동시에 2개의 refresh 요청이 가면 첫 번째가 토큰을 교체한 뒤
 // 두 번째가 "이전 토큰 재사용"으로 감지되어 모든 Refresh Token이 무효화될 수 있다.
+//
+// TanStack Query의 useMutation은 중복 요청을 자동으로 막지 않는다(useQuery와 다름).
+// authApi.ts의 postRefresh, 401 인터셉터가 모두 이 함수를 경유하므로
+// useMutation 인스턴스가 몇 개든 네트워크 요청은 이 single-flight가 1번으로 수렴시킨다.
 let refreshPromise: Promise<AccessTokenResponse> | null = null
 
 export function refreshAccessToken(): Promise<AccessTokenResponse> {

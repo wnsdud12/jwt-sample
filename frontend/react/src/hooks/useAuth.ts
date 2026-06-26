@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import * as authApi from '../api/authApi'
+import { useLogin, useSignup, useLogout, postRefresh, getMe } from '../api/authApi'
 import { useAuthStore } from '../stores/authStore'
 import type { LoginRequest, SignupRequest } from '../types/auth'
 
@@ -16,56 +16,57 @@ export function useAuth() {
   const setInitialized = useAuthStore((state) => state.setInitialized)
   const clearAuth = useAuthStore((state) => state.clearAuth)
 
+  const { mutateAsync: loginMutate } = useLogin()
+  const { mutateAsync: signupMutate } = useSignup()
+  const { mutateAsync: logoutMutate } = useLogout()
+
   // 앱 최초 로드·새로고침 시 Cookie의 Refresh Token으로 Access Token을 복구한다(silent refresh).
-  // Access Token은 메모리에만 있어 새로고침 시 사라지기 때문에 이 과정이 필요하다.
-  // 실패하면(Cookie 없음·만료) 로그아웃 상태로 유지하고,
-  // finally에서 setInitialized(true)를 호출해 ProtectedRoute가 결과를 알 수 있게 한다.
+  // user-triggered 액션이 아니라 앱 초기화 흐름이므로 useMutation 대신 plain function을 직접 호출한다.
   const initializeAuth = useCallback(async () => {
     try {
-      const tokenResponse = await authApi.refresh()
-      setAccessToken(tokenResponse.accessToken)
-      const userResponse = await authApi.getMe()
-      setUser(userResponse)
+      const tokenData = await postRefresh()
+      setAccessToken(tokenData.accessToken)
+      const userData = await getMe()
+      setUser(userData)
     } catch {
+      // Cookie 없음·만료 등 실패 시 로그아웃 상태로 유지한다.
       clearAuth()
     } finally {
+      // 성공·실패 모두 isInitialized를 true로 설정해 ProtectedRoute가 결과를 알 수 있게 한다.
       setInitialized(true)
     }
   }, [setAccessToken, setUser, setInitialized, clearAuth])
 
   const login = useCallback(
     async (request: LoginRequest) => {
-      // 로그인 성공 후 getMe로 사용자 정보도 가져와 상태에 저장한다.
-      const tokenResponse = await authApi.login(request)
-      setAccessToken(tokenResponse.accessToken)
-      const userResponse = await authApi.getMe()
-      setUser(userResponse)
+      const tokenData = await loginMutate(request)
+      setAccessToken(tokenData.accessToken)
+      const userData = await getMe()
+      setUser(userData)
       navigate('/')
     },
-    [setAccessToken, setUser, navigate],
+    [loginMutate, setAccessToken, setUser, navigate],
   )
 
   const signup = useCallback(
     async (request: SignupRequest) => {
-      await authApi.signup(request)
+      await signupMutate(request)
       navigate('/login')
     },
-    [navigate],
+    [signupMutate, navigate],
   )
 
   const logout = useCallback(async () => {
     try {
-      await authApi.logout()
+      await logoutMutate()
     } finally {
       // 서버 요청이 실패해도(네트워크 오류 등) 로컬 상태는 항상 초기화한다.
-      // 서버에서 Cookie를 삭제하지 못했더라도 클라이언트에서는 로그아웃 처리를 완료한다.
       clearAuth()
       navigate('/login')
     }
-  }, [clearAuth, navigate])
+  }, [logoutMutate, clearAuth, navigate])
 
   // accessToken과 user 둘 다 있어야 인증된 상태로 본다.
-  // initializeAuth가 완료되기 전에는 accessToken이 없어 항상 false다.
   const isAuthenticated = accessToken !== null && user !== null
 
   return {
