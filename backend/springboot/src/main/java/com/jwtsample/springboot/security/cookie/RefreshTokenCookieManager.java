@@ -28,7 +28,19 @@ public class RefreshTokenCookieManager {
 			.secure(cookieProperties.isSecure())
 			// sameSite=Strict: 다른 사이트에서 시작된 요청에 브라우저가 이 Cookie를 보내지 않는다. CSRF 방어 1계층.
 			.sameSite(cookieProperties.getSameSite())
-			// path: 이 경로 이하 요청에만 Cookie를 첨부한다. 불필요한 Cookie 전송 범위를 줄인다.
+			// path: 브라우저가 Cookie를 어느 요청에 첨부할지 결정하는 기준 경로.
+			// 요청 URL이 이 경로로 시작할 때만 Cookie를 자동으로 첨부하고, 그 외 요청에는 보내지 않는다.
+			//
+			// 브라우저는 Cookie를 (name + domain + path) 조합으로 식별한다.
+			// 따라서 이름이 같아도 path가 다르면 브라우저는 이를 별개의 Cookie로 저장·관리한다.
+			//
+			// 예) 사용자: path=/api/auth  /  관리자: path=/api/admin/auth
+			//   POST /api/auth/refresh       → 사용자 Cookie만 전송 (path 일치)
+			//   POST /api/admin/auth/refresh → 관리자 Cookie만 전송 (path 일치)
+			//   GET  /api/users/me           → 어느 쪽도 전송 안 됨  (path 미해당)
+			//
+			// path 분리만으로도 쿠키 충돌을 막는 데 충분하다.
+			// name까지 다르게 설정하는 것은 path가 실수로 넓어졌을 때를 대비한 추가 안전망(Defense in Depth)이다.
 			.path(cookieProperties.getPath())
 			// maxAge: 초 단위 만료 시간. 브라우저가 이 시간이 지나면 Cookie를 자동으로 삭제한다.
 			.maxAge(jwtProperties.getRefreshExpiration() / 1000)

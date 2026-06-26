@@ -15,6 +15,7 @@ public enum ErrorCode {
 	TOKEN_REUSE_DETECTED(HttpStatus.UNAUTHORIZED, "토큰 재사용이 감지되어 Refresh Token이 무효화되었습니다."),
 	CSRF_VALIDATION_FAILED(HttpStatus.FORBIDDEN, "요청이 거부되었습니다."),
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
+	NOT_ADMIN(HttpStatus.FORBIDDEN, "관리자 권한이 없습니다."),
 	VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다.");
 
 	private final HttpStatus httpStatus;

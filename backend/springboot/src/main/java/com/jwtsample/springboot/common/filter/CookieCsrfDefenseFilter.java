@@ -32,6 +32,8 @@ public class CookieCsrfDefenseFilter extends OncePerRequestFilter {
 
 	private static final String REFRESH_PATH = "/api/auth/refresh";
 	private static final String LOGOUT_PATH = "/api/auth/logout";
+	private static final String ADMIN_REFRESH_PATH = "/api/admin/auth/refresh";
+	private static final String ADMIN_LOGOUT_PATH = "/api/admin/auth/logout";
 	private static final String CUSTOM_HEADER_NAME = "X-Requested-With";
 	private static final String CUSTOM_HEADER_VALUE = "XMLHttpRequest";
 
@@ -59,7 +61,8 @@ public class CookieCsrfDefenseFilter extends OncePerRequestFilter {
 	}
 
 	private boolean isCookieAuthEndpoint(String requestUri) {
-		return REFRESH_PATH.equals(requestUri) || LOGOUT_PATH.equals(requestUri);
+		return REFRESH_PATH.equals(requestUri) || LOGOUT_PATH.equals(requestUri)
+			|| ADMIN_REFRESH_PATH.equals(requestUri) || ADMIN_LOGOUT_PATH.equals(requestUri);
 	}
 
 	// Origin 또는 Referer가 허용 목록과 일치하는지 검증한다.

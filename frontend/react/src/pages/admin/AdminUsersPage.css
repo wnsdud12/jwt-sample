@@ -1,0 +1,86 @@
+.admin-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #1a1a2e;
+  color: #fff;
+}
+
+.admin-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.admin-logout-btn {
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  color: #fff;
+  border: 1px solid #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.admin-logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-content {
+  padding: 2rem;
+}
+
+.admin-status {
+  text-align: center;
+  color: #555;
+  margin-top: 2rem;
+}
+
+.admin-status--error {
+  color: #c0392b;
+}
+
+.admin-table-wrapper {
+  overflow-x: auto;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.admin-table th {
+  background-color: #f9f9f9;
+  font-weight: 600;
+  color: #333;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table tbody tr:hover {
+  background-color: #f0f4ff;
+}
+
+.admin-table-empty {
+  text-align: center;
+  color: #999;
+  padding: 2rem;
+}

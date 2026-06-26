@@ -82,8 +82,9 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    if (originalRequest.url?.includes('/auth/refresh')) {
-      // refresh 요청 자체가 401이면 Refresh Token도 만료된 것이므로 로그아웃 처리한다.
+    // 로그인·refresh 자체가 401이면 재시도 없이 원본 에러를 그대로 반환한다.
+    // 재시도하면 refresh 실패 에러가 원본 에러를 덮어써서 잘못된 메시지가 표시된다.
+    if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/login')) {
       useAuthStore.getState().clearAuth()
       return Promise.reject(error)
     }

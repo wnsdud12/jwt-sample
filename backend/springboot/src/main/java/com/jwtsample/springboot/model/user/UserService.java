@@ -9,6 +9,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -52,5 +55,12 @@ public class UserService {
 	public User getUserEntityById(Long userId) {
 		return userRepository.findById(userId)
 			.orElseThrow(() -> new AuthException(ErrorCode.USER_NOT_FOUND));
+	}
+
+	// JpaRepository가 기본 제공하는 findAll()로 전체 목록을 조회한다.
+	public List<UserResponse> getAllUsers() {
+		return userRepository.findAll().stream()
+			.map(UserResponse::from)
+			.collect(Collectors.toList());
 	}
 }

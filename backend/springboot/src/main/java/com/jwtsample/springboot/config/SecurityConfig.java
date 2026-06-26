@@ -1,6 +1,7 @@
 package com.jwtsample.springboot.config;
 
 import com.jwtsample.springboot.common.filter.CookieCsrfDefenseFilter;
+import com.jwtsample.springboot.config.properties.AdminCookieProperties;
 import com.jwtsample.springboot.config.properties.CookieProperties;
 import com.jwtsample.springboot.config.properties.CorsProperties;
 import com.jwtsample.springboot.config.properties.JwtProperties;
@@ -35,6 +36,7 @@ import java.util.List;
 @EnableConfigurationProperties({
 	JwtProperties.class,
 	CookieProperties.class,
+	AdminCookieProperties.class,
 	CorsProperties.class,
 	RefreshTokenProperties.class
 })
@@ -62,6 +64,13 @@ public class SecurityConfig {
 				// refresh, logout도 permitAll: 이미 만료되거나 로그아웃된 상태에서도 호출할 수 있어야 한다.
 				// 인증 여부는 Cookie의 Refresh Token으로 확인하지, Bearer JWT가 아니다.
 				.requestMatchers(HttpMethod.POST, "/api/auth/refresh", "/api/auth/logout").permitAll()
+				// 관리자 로그인도 공개 엔드포인트 (로그인 전이므로 토큰 없음)
+				.requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll()
+				// 관리자 refresh/logout도 Cookie 기반이므로 permitAll (위 사용자와 동일한 이유)
+				.requestMatchers(HttpMethod.POST, "/api/admin/auth/refresh", "/api/admin/auth/logout").permitAll()
+				// /api/admin/** 나머지는 ADMIN 역할을 가진 JWT가 있어야 통과한다.
+				// Spring Security의 hasRole("ADMIN")은 내부적으로 ROLE_ADMIN 권한을 확인한다(UserPrincipal 참고).
+				.requestMatchers("/api/admin/**").hasRole("ADMIN")
 				// 그 외 모든 요청은 유효한 JWT가 있어야 통과한다.
 				.anyRequest().authenticated()
 			)
