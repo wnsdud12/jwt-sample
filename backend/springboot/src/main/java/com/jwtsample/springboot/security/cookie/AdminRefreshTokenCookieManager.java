@@ -24,6 +24,11 @@ public class AdminRefreshTokenCookieManager {
 		return ResponseCookie.from(adminCookieProperties.getName(), refreshTokenValue)
 			.httpOnly(true)
 			.secure(adminCookieProperties.isSecure())
+			// sameSite: 외부 사이트에서 시작된 요청에 브라우저가 이 Cookie를 첨부할지 결정한다.
+			//   Strict — cross-site 요청에 Cookie 미전송. 외부 링크 클릭 시 로그인이 풀리지만 보안이 가장 강하다.
+			//   Lax    — 링크 클릭(GET)에는 Cookie 전송, cross-site POST form은 차단.
+			// 관리자 페이지는 외부 링크 유입보다 보안이 중요하므로 Strict가 적합하다.
+			// Lax로 변경하더라도 CookieCsrfDefenseFilter(Origin 검증 + X-Requested-With)가 cross-site POST를 추가로 막는다.
 			.sameSite(adminCookieProperties.getSameSite())
 			// path: 브라우저가 Cookie를 어느 요청에 첨부할지 결정하는 기준 경로.
 			// 요청 URL이 이 경로로 시작할 때만 Cookie를 자동으로 첨부하고, 그 외 요청에는 보내지 않는다.

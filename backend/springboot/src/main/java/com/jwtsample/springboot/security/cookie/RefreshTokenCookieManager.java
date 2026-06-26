@@ -26,7 +26,16 @@ public class RefreshTokenCookieManager {
 			.httpOnly(true)
 			// secure: HTTPS 연결에서만 전송. application-local.yml의 app.cookie.secure 값으로 제어.
 			.secure(cookieProperties.isSecure())
-			// sameSite=Strict: 다른 사이트에서 시작된 요청에 브라우저가 이 Cookie를 보내지 않는다. CSRF 방어 1계층.
+			// sameSite: 외부 사이트에서 시작된 요청에 브라우저가 이 Cookie를 첨부할지 결정한다. CSRF 방어 1계층.
+			//   Strict — 외부 링크 클릭·외부 사이트 form 등 cross-site 요청에 Cookie를 일절 보내지 않는다.
+			//            보안이 가장 강하지만, 카카오톡·인스타그램 등 외부 링크로 유입 시 로그인이 풀린다.
+			//            → 금융·관리자 페이지처럼 외부 유입 시 로그인 풀려도 무방한 서비스에 적합.
+			//   Lax    — GET 방식의 최상위 탐색(링크 클릭)에는 Cookie를 보내고, cross-site POST form은 차단한다.
+			//            외부 링크 클릭 후에도 로그인 상태가 유지된다.
+			//            → SNS·쇼핑몰처럼 공유 링크 클릭 후 바로 로그인 상태로 보여야 하는 서비스에 적합.
+			// 이 샘플은 Strict를 기본값으로 사용한다.
+			// Lax로 변경하더라도 Cookie 기반 엔드포인트는 Origin 검증 + X-Requested-With 헤더(CookieCsrfDefenseFilter)로
+			// cross-site POST를 추가로 막고 있어 CSRF 방어가 유지된다.
 			.sameSite(cookieProperties.getSameSite())
 			// path: 브라우저가 Cookie를 어느 요청에 첨부할지 결정하는 기준 경로.
 			// 요청 URL이 이 경로로 시작할 때만 Cookie를 자동으로 첨부하고, 그 외 요청에는 보내지 않는다.
