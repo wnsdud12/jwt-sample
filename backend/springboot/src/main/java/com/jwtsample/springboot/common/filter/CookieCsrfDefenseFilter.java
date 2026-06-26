@@ -16,6 +16,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+// Cookie 기반 엔드포인트(refresh, logout)를 CSRF 공격으로부터 보호하는 필터.
+//
+// CSRF란: 공격자가 희생자의 브라우저를 이용해 희생자 모르게 요청을 보내는 공격.
+//   예) 악성 사이트에서 <form action="https://example.com/api/auth/logout" method="POST">를 몰래 실행.
+//   브라우저가 Cookie를 자동으로 첨부하므로 서버가 정상 요청으로 오인할 수 있다.
+//
+// 3중 방어 구조:
+//   1. SameSite=Strict Cookie  : 외부 사이트 요청 시 브라우저가 Cookie 자체를 보내지 않는다.
+//   2. Origin/Referer 헤더 검증 : 허용된 도메인 목록과 대조해 외부 요청을 차단한다.
+//   3. X-Requested-With 커스텀 헤더 요구: 단순 <form>은 커스텀 헤더를 보낼 수 없다.
 @Component
 @RequiredArgsConstructor
 public class CookieCsrfDefenseFilter extends OncePerRequestFilter {
@@ -37,6 +47,7 @@ public class CookieCsrfDefenseFilter extends OncePerRequestFilter {
 		String requestUri = request.getRequestURI();
 		String method = request.getMethod();
 
+		// Cookie를 사용하는 POST 엔드포인트만 검증한다. GET 등 다른 메서드는 통과.
 		if ("POST".equals(method) && isCookieAuthEndpoint(requestUri)) {
 			if (!isValidOrigin(request) || !isValidCustomHeader(request)) {
 				writeForbiddenResponse(response);
@@ -51,21 +62,25 @@ public class CookieCsrfDefenseFilter extends OncePerRequestFilter {
 		return REFRESH_PATH.equals(requestUri) || LOGOUT_PATH.equals(requestUri);
 	}
 
-	// Origin 또는 Referer가 허용 목록과 일치하는지 검증
+	// Origin 또는 Referer가 허용 목록과 일치하는지 검증한다.
 	private boolean isValidOrigin(HttpServletRequest request) {
 		List<String> allowedOrigins = corsProperties.getAllowedOrigins();
-		String origin = request.getHeader("Origin");
 
+		// Origin 헤더: cross-origin 요청 시 브라우저가 자동으로 추가하는 출처 정보. 가장 신뢰도가 높다.
+		String origin = request.getHeader("Origin");
 		if (origin != null && !origin.isBlank()) {
 			return allowedOrigins.contains(origin);
 		}
 
+		// Referer 헤더: 요청을 보낸 페이지의 전체 URL. Origin이 없을 때 대안으로 사용.
 		String referer = request.getHeader("Referer");
 		if (referer != null && !referer.isBlank()) {
 			return allowedOrigins.stream().anyMatch(referer::startsWith);
 		}
 
-		// Vite 프록시 등 same-origin 요청은 Origin/Referer가 없을 수 있음
+		// Sec-Fetch-Site: 최신 브라우저가 자동으로 추가하는 요청 출처 분류 헤더.
+		// same-origin/same-site이면 동일 출처의 정상 요청으로 신뢰한다.
+		// Vite 개발 서버 프록시처럼 Origin/Referer가 없는 same-origin 요청을 허용하기 위해 사용.
 		String secFetchSite = request.getHeader("Sec-Fetch-Site");
 		if ("same-origin".equals(secFetchSite) || "same-site".equals(secFetchSite)) {
 			return true;
@@ -74,7 +89,8 @@ public class CookieCsrfDefenseFilter extends OncePerRequestFilter {
 		return false;
 	}
 
-	// 단순 form CSRF를 막기 위해 커스텀 헤더 필수
+	// 단순 HTML <form>은 커스텀 헤더를 보낼 수 없어 CSRF 공격에 사용되기 어렵다.
+	// fetch/axios처럼 커스텀 헤더를 설정할 수 있는 클라이언트만 이 검사를 통과한다.
 	private boolean isValidCustomHeader(HttpServletRequest request) {
 		String headerValue = request.getHeader(CUSTOM_HEADER_NAME);
 		return CUSTOM_HEADER_VALUE.equals(headerValue);
