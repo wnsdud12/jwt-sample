@@ -25,6 +25,10 @@ public class UserService {
 
 		User user = User.builder()
 			.email(request.getEmail())
+			// encode("1234") 호출 결과 예시:
+			//   $2a$10$N9qo8uLOickgx2ZMRZoMye IjZAgcfl7p92ldGxad68LJZdL17lhWy
+			//           ^^^^^^^^^^^^^^^^^^^^^^^^ ← 매번 다른 랜덤 salt
+			// salt가 결과 문자열 안에 포함되므로 별도로 저장하거나 관리할 필요 없다.
 			.password(passwordEncoder.encode(request.getPassword()))
 			.nickname(request.getNickname())
 			.role(Role.USER)

@@ -90,8 +90,29 @@ public class SecurityConfig {
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
-		// BCrypt: 비밀번호 단방향 해시 알고리즘. salt가 내장되어 같은 입력이라도 매번 다른 해시값이 나온다.
-		// DB가 유출되더라도 원문 비밀번호를 역추적하기 어렵다.
+		// BCrypt: Blowfish 암호를 기반으로 만들어진 비밀번호 전용 단방향 해시 알고리즘.
+		//
+		// 결과 문자열 구조 (총 60자):
+		//   $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+		//   ---- --  ----------------------  -------------------------------
+		//   버전 cost       salt(22자)                  hash(31자)
+		//
+		//   $ : 구분자 (각 필드를 나누는 역할)
+		//   2a: BCrypt 알고리즘 버전 (2a, 2b 등 사소한 차이)
+		//   10: cost 파라미터. 내부 반복 횟수 = 2^10 = 1,024회.
+		//       숫자가 클수록 느려지므로 무차별 대입(brute-force) 공격이 어려워진다.
+		//       서버 성능에 따라 조정 가능 — new BCryptPasswordEncoder(12)
+		//   salt(22자): encode() 호출 시 자동 생성되는 랜덤값. 이 값이 매번 달라서
+		//       같은 비밀번호라도 호출마다 다른 해시가 나온다.
+		//   hash(31자): 비밀번호 + salt + cost를 조합해 계산한 실제 해시값.
+		//
+		// matches(입력값, 저장된해시) 동작 원리:
+		//   새 salt를 생성하지 않고, 저장된 해시 문자열에서 salt와 cost를 꺼낸다.
+		//   → 입력값을 꺼낸 salt·cost로 다시 해시
+		//   → 결과를 저장된 hash 부분과 비교
+		//   같은 조건(salt·cost)으로 만들었으므로 동일 비밀번호면 결과가 일치한다.
+		//
+		// DB가 유출되더라도 hash는 단방향이라 원문 비밀번호를 역추적하기 어렵다.
 		return new BCryptPasswordEncoder();
 	}
 

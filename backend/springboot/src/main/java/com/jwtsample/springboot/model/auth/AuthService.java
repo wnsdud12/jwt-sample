@@ -49,7 +49,9 @@ public class AuthService {
 		// 1. 이메일로 사용자 조회
 		User user = userService.findByEmail(request.getEmail());
 
-		// 2. 비밀번호 검증 (BCrypt는 단방향이므로 matches()로 비교한다. 원문 복원은 불가능)
+		// 2. 비밀번호 검증. BCrypt는 단방향이므로 원문 복원이 불가능하다.
+		//    matches()는 새 salt를 만들지 않고, user.getPassword()(DB 해시)에서 salt·cost를 꺼낸 뒤
+		//    request.getPassword()(평문)를 동일 조건으로 다시 해시해 결과를 비교한다.
 		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
 			throw new AuthException(ErrorCode.INVALID_CREDENTIALS);
 		}
