@@ -1,6 +1,8 @@
 package com.jwtsample.springboot.controller.admin;
 
 import com.jwtsample.springboot.model.admin.AdminAuthService;
+import com.jwtsample.springboot.model.auth.LoginRateLimitService;
+import com.jwtsample.springboot.model.auth.TokenWithCookie;
 import com.jwtsample.springboot.view.auth.AccessTokenResponse;
 import com.jwtsample.springboot.view.auth.LoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,10 +22,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminAuthController {
 
 	private final AdminAuthService adminAuthService;
+	private final LoginRateLimitService loginRateLimitService;
 
 	@PostMapping("/login")
-	public ResponseEntity<AccessTokenResponse> login(@Valid @RequestBody LoginRequest request) {
-		AdminAuthService.TokenWithCookie result = adminAuthService.login(request);
+	public ResponseEntity<AccessTokenResponse> login(
+		@Valid @RequestBody LoginRequest request,
+		HttpServletRequest httpRequest
+	) {
+		loginRateLimitService.checkAndIncrement(extractClientIp(httpRequest));
+		TokenWithCookie result = adminAuthService.login(request);
 		return ResponseEntity.ok()
 			.header(HttpHeaders.SET_COOKIE, result.refreshCookie().toString())
 			.body(result.accessToken());
@@ -31,7 +38,7 @@ public class AdminAuthController {
 
 	@PostMapping("/refresh")
 	public ResponseEntity<AccessTokenResponse> refresh(HttpServletRequest request) {
-		AdminAuthService.TokenWithCookie result = adminAuthService.refresh(request);
+		TokenWithCookie result = adminAuthService.refresh(request);
 		ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok();
 		if (result.refreshCookie() != null) {
 			responseBuilder.header(HttpHeaders.SET_COOKIE, result.refreshCookie().toString());
@@ -44,5 +51,13 @@ public class AdminAuthController {
 		return ResponseEntity.noContent()
 			.header(HttpHeaders.SET_COOKIE, adminAuthService.logout(request).toString())
 			.build();
+	}
+
+	private String extractClientIp(HttpServletRequest request) {
+		String forwarded = request.getHeader("X-Forwarded-For");
+		if (forwarded != null && !forwarded.isBlank()) {
+			return forwarded.split(",")[0].trim();
+		}
+		return request.getRemoteAddr();
 	}
 }

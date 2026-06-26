@@ -9,12 +9,12 @@ import com.jwtsample.springboot.model.user.UserService;
 import com.jwtsample.springboot.security.UserPrincipal;
 import com.jwtsample.springboot.security.cookie.AdminRefreshTokenCookieManager;
 import com.jwtsample.springboot.security.jwt.JwtTokenProvider;
+import com.jwtsample.springboot.model.auth.TokenWithCookie;
 import com.jwtsample.springboot.view.auth.AccessTokenResponse;
 import com.jwtsample.springboot.view.auth.LoginRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
-import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,9 +32,6 @@ public class AdminAuthService {
 	private final AdminRefreshTokenCookieManager adminCookieManager;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final PasswordEncoder passwordEncoder;
-
-	public record TokenWithCookie(AccessTokenResponse accessToken, @Nullable ResponseCookie refreshCookie) {
-	}
 
 	@Transactional
 	public TokenWithCookie login(LoginRequest request) {
@@ -66,6 +63,14 @@ public class AdminAuthService {
 			.orElse(null);
 
 		User user = userService.getUserEntityById(rotateResult.userId());
+
+		// 권한 재검증: 로그인 이후 관리자 권한이 박탈된 경우를 방어한다.
+		// Refresh Token은 유효하더라도 현재 DB의 role이 ADMIN이 아니면 Refresh Token을 폐기하고 거부한다.
+		if (user.getRole() != Role.ADMIN) {
+			refreshTokenService.revokeRefreshToken(cookieValue);
+			throw new AuthException(ErrorCode.NOT_ADMIN);
+		}
+
 		return new TokenWithCookie(buildAccessTokenResponse(new UserPrincipal(user)), refreshCookie);
 	}
 

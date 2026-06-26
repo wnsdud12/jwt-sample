@@ -16,6 +16,8 @@ public enum ErrorCode {
 	CSRF_VALIDATION_FAILED(HttpStatus.FORBIDDEN, "요청이 거부되었습니다."),
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
 	NOT_ADMIN(HttpStatus.FORBIDDEN, "관리자 권한이 없습니다."),
+	TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다."),
 	VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다.");
 
 	private final HttpStatus httpStatus;

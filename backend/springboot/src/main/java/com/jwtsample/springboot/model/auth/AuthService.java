@@ -14,7 +14,6 @@ import com.jwtsample.springboot.view.user.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
-import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,12 +31,6 @@ public class AuthService {
 	private final RefreshTokenCookieManager refreshTokenCookieManager;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final PasswordEncoder passwordEncoder;
-
-	// 서비스가 컨트롤러에 반환하는 묶음 타입.
-	// Access Token + Refresh Cookie를 함께 반환해야 하는데 Java 메서드는 값을 하나만 반환할 수 있어 record로 묶는다.
-	// refreshCookie가 null이면 grace 중복 요청으로 Cookie 갱신 없이 Access Token만 재발급한 경우다.
-	public record TokenWithCookie(AccessTokenResponse accessToken, @Nullable ResponseCookie refreshCookie) {
-	}
 
 	@Transactional
 	public UserResponse signup(SignupRequest request) {

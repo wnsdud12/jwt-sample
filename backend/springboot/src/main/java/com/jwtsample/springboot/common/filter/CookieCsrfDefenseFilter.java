@@ -82,10 +82,11 @@ public class CookieCsrfDefenseFilter extends OncePerRequestFilter {
 		}
 
 		// Sec-Fetch-Site: 최신 브라우저가 자동으로 추가하는 요청 출처 분류 헤더.
-		// same-origin/same-site이면 동일 출처의 정상 요청으로 신뢰한다.
-		// Vite 개발 서버 프록시처럼 Origin/Referer가 없는 same-origin 요청을 허용하기 위해 사용.
+		// same-origin만 허용한다. same-site(서브도메인 포함)는 허용하지 않는다.
+		// → 서브도메인(예: evil.mysite.com)이 공격자에게 탈취된 경우 same-site를 허용하면 CSRF가 가능하다.
+		// → 프론트엔드가 서브도메인(api.mysite.com ↔ mysite.com)이라면 Origin 검증 단계에서 allowedOrigins로 처리한다.
 		String secFetchSite = request.getHeader("Sec-Fetch-Site");
-		if ("same-origin".equals(secFetchSite) || "same-site".equals(secFetchSite)) {
+		if ("same-origin".equals(secFetchSite)) {
 			return true;
 		}
 

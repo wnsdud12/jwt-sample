@@ -30,7 +30,9 @@ public class RefreshTokenService {
 	// - React StrictMode 개발 모드 이중 호출
 	// - 연속 F5로 Set-Cookie 반영 전 같은 토큰이 재전송되는 경우
 	// grace period 이후 같은 이전 토큰이 오면 재사용 공격(TOKEN_REUSE_DETECTED)으로 처리
-	private static final Duration GRACE_TTL = Duration.ofSeconds(30);
+	// 10초: StrictMode 이중 호출(~수십ms)과 F5 연타를 커버하기에 충분하면서
+	//       탈취된 이전 토큰의 재사용 허용 시간을 최소화한다.
+	private static final Duration GRACE_TTL = Duration.ofSeconds(10);
 
 	private final StringRedisTemplate redisTemplate;
 	private final TokenHasher tokenHasher;
@@ -118,6 +120,10 @@ public class RefreshTokenService {
 		saveRefreshToken(refreshTokenId, userId, newHash);
 		// Rotation 직전 토큰 해시를 grace 키로만 보관 (값에는 원문/해시 저장 안 함)
 		saveGraceRefreshToken(refreshTokenId, presentedHash);
+		// 사용자 인덱스 키 TTL을 갱신한다.
+		// Rotation 시 갱신하지 않으면 오래된 세션에서 인덱스 키가 만료되어
+		// Reuse Detection 발동 시 해당 사용자의 다른 세션을 모두 폐기하지 못할 수 있다.
+		refreshUserIndexTtl(userId);
 
 		return RotateResult.rotated(new RefreshTokenPair(refreshTokenId, newRawToken, newCookieValue, userId));
 	}
@@ -150,6 +156,11 @@ public class RefreshTokenService {
 		}
 
 		redisTemplate.delete(userIndexKey);
+	}
+
+	private void refreshUserIndexTtl(Long userId) {
+		String userIndexKey = REFRESH_TOKEN_USER_PREFIX + userId;
+		redisTemplate.expire(userIndexKey, Duration.ofMillis(jwtProperties.getRefreshExpiration()));
 	}
 
 	private void saveGraceRefreshToken(String refreshTokenId, String oldTokenHash) {
